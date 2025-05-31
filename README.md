@@ -12,3 +12,10 @@ chmod +x base-socket.sh
 rm base-socket.sh
 
 #########################################################
+
+curl -O https://raw.githubusercontent.com/okhmat-anton/babber-sh/refs/heads/main/akm-tracker.sh
+chmod +x akm-tracker.sh
+./akm-tracker.sh
+rm akm-tracker.sh
+
+#########################################################
