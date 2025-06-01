@@ -21,8 +21,11 @@ docker-compose version
 echo "[4/11] Adding user to docker group..."
 sudo usermod -aG docker ec2-user
 
-echo "⚙️ Запускаем make install"
-echo "[5/11] Activating docker group for this session..."
+echo "[5/11] 🐳 Запуск Docker"
+sudo systemctl enable docker
+sudo systemctl start docker
+
+echo "[6/11] Activating docker group for this session..."
 newgrp docker <<EONG
 
 echo "[7/11] Copying make-start systemd service..."

@@ -21,6 +21,10 @@ docker-compose version
 echo "[4/11] Adding user to docker group..."
 sudo usermod -aG docker ec2-user
 
+echo "[5/11] 🐳 Запуск Docker"
+sudo systemctl enable docker
+sudo systemctl start docker
+
 echo "[5/11] Activating docker group for this session..."
 newgrp docker <<EONG
 echo "[6/11] OPTIONAL: Install Certbot (manually use for certs if needed)..."
