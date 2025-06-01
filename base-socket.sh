@@ -3,8 +3,8 @@
 # === SETUP FOR SOCKET BABBER ===
 
 echo "[1/11] Installing system packages..."
-sudo dnf update -y
-sudo dnf install -y git make docker
+sudo yum update -y
+sudo yum install -y git make docker
 
 echo "[2/11] Cloning the repository with SSH..."
 read -p "Enter full SSH repo URL (e.g. git@github.com:user/repo.git): " REPO_URL
