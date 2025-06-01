@@ -19,7 +19,7 @@ sudo chmod +x /usr/local/bin/docker-compose
 docker-compose version
 
 echo "[4/11] Adding user to docker group..."
-sudo usermod -a -G docker ec2-user
+sudo usermod -aG docker ec2-user
 
 echo "[5/11] Activating docker group for this session..."
 newgrp docker <<EONG
