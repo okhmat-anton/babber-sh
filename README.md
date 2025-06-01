@@ -7,7 +7,7 @@ https://<token>@github.com/user/repo.git
 ######################MONGO###########################
 
 cd /home/ec2-user
-curl -O https://raw.githubusercontent.com/okhmat-anton/babber-sh/refs/heads/main/base-mongo.sh
+curl -H 'Cache-Control: no-cache' -O https://raw.githubusercontent.com/okhmat-anton/babber-sh/refs/heads/main/base-mongo.sh?skdhjbc
 chmod +x base-mongo.sh
 ./base-mongo.sh
 rm base-mongo.sh
@@ -15,7 +15,7 @@ rm base-mongo.sh
 #######################SOCKET########################
 
 cd /home/ec2-user
-curl -O https://raw.githubusercontent.com/okhmat-anton/babber-sh/refs/heads/main/base-socket.sh
+curl -H 'Cache-Control: no-cache' -O https://raw.githubusercontent.com/okhmat-anton/babber-sh/refs/heads/main/base-socket.sh
 chmod +x base-socket.sh
 ./base-socket.sh
 rm base-socket.sh
@@ -23,7 +23,7 @@ rm base-socket.sh
 ########################TRACKER##########################
 
 cd /home/ec2-user
-curl -O https://raw.githubusercontent.com/okhmat-anton/babber-sh/refs/heads/main/akm-tracker.sh
+curl -H 'Cache-Control: no-cache' -O https://raw.githubusercontent.com/okhmat-anton/babber-sh/refs/heads/main/akm-tracker.sh
 chmod +x akm-tracker.sh
 ./akm-tracker.sh
 rm akm-tracker.sh
