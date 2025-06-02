@@ -28,6 +28,14 @@ chmod +x base-socket.sh
 ./base-socket.sh
 rm base-socket.sh
 
+#######################MAIN API########################
+
+cd /home/ec2-user
+curl -H 'Cache-Control: no-cache' -O https://raw.githubusercontent.com/okhmat-anton/babber-sh/refs/heads/main/base-babber-api.sh
+chmod +x base-babber-api.sh
+./base-babber-api.sh
+rm base-babber-api.sh
+
 ########################TRACKER##########################
 
 cd /home/ec2-user
