@@ -4,6 +4,14 @@ sh scripts
 for git get token from here https://github.com/settings/personal-access-tokens
 https://<token>@github.com/user/repo.git
 
+######################PG###########################
+
+cd /home/ec2-user
+curl -H 'Cache-Control: no-cache' -O https://raw.githubusercontent.com/okhmat-anton/babber-sh/refs/heads/main/base-postgre.sh
+chmod +x base-postgre.sh
+./base-postgre.sh
+rm base-postgre.sh
+
 ######################MONGO###########################
 
 cd /home/ec2-user
