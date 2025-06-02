@@ -38,6 +38,6 @@ echo "[8/11] Starting project with make..."
 make install
 
 echo "✅ Готово! API развернут и инициализирована."
-echo "[10/11] NOTE: Ensure outbound port 80 433 is open in AWS security group."
+echo "[10/11] NOTE: Ensure outbound port 80 433 8000 is open in AWS security group."
 echo "[11/11]ℹ️ Перезайди в SSH для полной активации docker-группы"
 EONG
