@@ -37,7 +37,7 @@ sudo systemctl start make-start
 echo "[8/11] Starting project with make..."
 make install
 
-echo "✅ Готово! Mysql развернута и инициализирована."
-echo "[10/11] NOTE: Ensure outbound port 3306 is open in AWS security group."
+echo "✅ Готово! API развернут и инициализирована."
+echo "[10/11] NOTE: Ensure outbound port 80 433 is open in AWS security group."
 echo "[11/11]ℹ️ Перезайди в SSH для полной активации docker-группы"
 EONG
