@@ -44,4 +44,13 @@ chmod +x akm-tracker.sh
 ./akm-tracker.sh
 rm akm-tracker.sh
 
+
+####################### UPLOADER ########################
+
+cd /home/ec2-user
+curl -H 'Cache-Control: no-cache' -O https://raw.githubusercontent.com/okhmat-anton/babber-sh/refs/heads/main/base-uploader.sh
+chmod +x base-uploader.sh
+./base-uploader.sh
+rm base-uploader9o.sh
+
 #########################################################
