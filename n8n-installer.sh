@@ -2,14 +2,21 @@
 set -euo pipefail
 
 ############################################
-# CONFIG — ПРАВЬ ПОД СЕБЯ
+# USER INPUT
 ############################################
-DOMAIN="n8n.alternative-ai.org"          # например, n8n.example.com (нужно для SSL)
-ADMIN_EMAIL="admin@alternative-ai.org"    # для Let's Encrypt
-TZ="UTC"
-BASE_DIR="/opt/n8n"
+read -p "Домен для n8n (например, n8n.example.com) [по умолчанию: n.alternative-ai.org]: " DOMAIN
+DOMAIN=${DOMAIN:-n.alternative-ai.org}
 
-# БД
+read -p "Email для Let's Encrypt (например, admin@example.com) [по умолчанию: admin@${DOMAIN}]: " ADMIN_EMAIL
+ADMIN_EMAIL=${ADMIN_EMAIL:-admin@${DOMAIN}}
+
+read -p "Часовой пояс (например, Europe/Kyiv или America/Los_Angeles) [по умолчанию: America/New_York]: " TZ
+TZ=${TZ:-America/New_York}
+
+############################################
+# CONFIG
+############################################
+BASE_DIR="/opt/n8n"
 POSTGRES_USER="n8n"
 POSTGRES_DB="n8n"
 
@@ -20,55 +27,82 @@ random() { tr -dc 'A-Za-z0-9' </dev/urandom | head -c "${1:-32}"; echo; }
 need()  { command -v "$1" >/dev/null 2>&1 || return 1; }
 
 ############################################
-# CHECKS
-############################################
-if [[ -z "${DOMAIN}" ]]; then
-  echo "ERROR: DOMAIN пуст. Для SSL нужен домен с A-записью на этот сервер."
-  exit 1
-fi
-
-############################################
 # SECRETS
 ############################################
 N8N_ENCRYPTION_KEY="$(random 64)"
 POSTGRES_PASSWORD="$(random 32)"
 
 ############################################
-# PACKAGES (curl, jq, ffmpeg)
+# FIX CURL-MINIMAL (AL2023)
+############################################
+if command -v dnf >/dev/null 2>&1; then
+  if dnf list installed curl-minimal >/dev/null 2>&1; then
+    echo "[*] Fixing curl-minimal conflict..."
+    sudo dnf -y swap curl-minimal curl --allowerasing || {
+      sudo dnf -y distro-sync
+      sudo dnf -y swap curl-minimal curl --allowerasing
+    }
+  fi
+fi
+
+############################################
+# BASE PACKAGES
 ############################################
 echo "[*] Installing base packages..."
 if need dnf; then
   sudo dnf -y update
-  sudo dnf -y install curl jq ffmpeg ca-certificates
+  sudo dnf -y install curl jq tar xz ca-certificates
 elif need yum; then
   sudo yum -y update
-  # ffmpeg в AL2 проще через rpmfusion/epel, но быстрее поставить из n8n-контейнера.
-  sudo yum -y install curl jq ca-certificates
+  sudo yum -y install curl jq tar xz ca-certificates
 else
-  echo "Unsupported distro. Need dnf/yum."
+  echo "Unsupported distro. Need dnf or yum."
   exit 1
+fi
+
+############################################
+# FFMPEG (static on host)
+############################################
+if ! command -v ffmpeg >/dev/null 2>&1; then
+  echo "[*] Installing static FFmpeg..."
+  cd /tmp
+  curl -LO https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+  tar -xJf ffmpeg-release-amd64-static.tar.xz
+  sudo mv ffmpeg-*-amd64-static/ffmpeg /usr/local/bin/
+  sudo mv ffmpeg-*-amd64-static/ffprobe /usr/local/bin/
+  sudo chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe
+  rm -rf /tmp/ffmpeg-*-amd64-static*
+  echo "[*] FFmpeg: $(ffmpeg -version | head -n1)"
 fi
 
 ############################################
 # DOCKER + COMPOSE
 ############################################
-if ! need docker; then
-  echo "[*] Installing Docker..."
-  curl -fsSL https://get.docker.com | sudo sh
-  sudo systemctl enable docker
-  sudo systemctl start docker
-  sudo usermod -aG docker "$USER" || true
+echo "[*] Installing Docker..."
+source /etc/os-release || true
+
+if command -v dnf >/dev/null 2>&1; then
+  sudo dnf -y install docker
+  sudo systemctl enable --now docker
+elif command -v yum >/dev/null 2>&1; then
+  if [[ "${ID:-}" = "amzn" && "${VERSION_ID:-}" =~ ^2 ]]; then
+    sudo amazon-linux-extras install -y docker
+    sudo systemctl enable --now docker
+  else
+    sudo yum -y install docker
+    sudo systemctl enable --now docker
+  fi
 fi
 
+sudo usermod -aG docker "$USER" || true
+
+# Compose v2 (binary, если не найден)
 if ! docker compose version >/dev/null 2>&1; then
-  echo "[*] Installing Docker Compose plugin..."
-  DOCKER_CLI_PLUGIN_DIR="/usr/lib/docker/cli-plugins"
-  sudo mkdir -p "$DOCKER_CLI_PLUGIN_DIR"
-  # последний релиз compose
-  COMPOSE_URL="$(curl -fsSL https://api.github.com/repos/docker/compose/releases/latest \
-    | jq -r '.assets[] | select(.name|test("linux-x86_64$")) | .browser_download_url')"
-  sudo curl -L "$COMPOSE_URL" -o "$DOCKER_CLI_PLUGIN_DIR/docker-compose"
-  sudo chmod +x "$DOCKER_CLI_PLUGIN_DIR/docker-compose"
+  echo "[*] Installing Docker Compose v2..."
+  sudo mkdir -p /usr/lib/docker/cli-plugins
+  sudo curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
+    -o /usr/lib/docker/cli-plugins/docker-compose
+  sudo chmod +x /usr/lib/docker/cli-plugins/docker-compose
 fi
 
 ############################################
@@ -79,10 +113,9 @@ sudo mkdir -p "${BASE_DIR}"/{data,postgres,caddy}
 sudo chown -R "$USER":"$USER" "$BASE_DIR"
 
 ############################################
-# ENV
+# .ENV
 ############################################
 cat > "${BASE_DIR}/.env" <<EOF
-# ====== n8n ======
 GENERIC_TIMEZONE=${TZ}
 N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
 N8N_PORT=5678
@@ -91,12 +124,10 @@ N8N_PUBLIC_URL=https://${DOMAIN}
 N8N_SECURE_COOKIE=true
 EXECUTIONS_MODE=regular
 
-# ====== DB ======
 POSTGRES_USER=${POSTGRES_USER}
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 POSTGRES_DB=${POSTGRES_DB}
 
-# ====== INTERNAL ======
 DB_TYPE=postgresdb
 DB_POSTGRESDB_HOST=postgres
 DB_POSTGRESDB_PORT=5432
@@ -106,20 +137,7 @@ DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
 EOF
 
 ############################################
-# Dockerfile: n8n + ffmpeg внутри контейнера
-############################################
-cat > "${BASE_DIR}/Dockerfile" <<'EOF'
-FROM n8nio/n8n:latest
-USER root
-RUN set -eux; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends ffmpeg; \
-    rm -rf /var/lib/apt/lists/*
-USER node
-EOF
-
-############################################
-# Caddyfile (SSL / reverse proxy)
+# Caddyfile (SSL reverse proxy)
 ############################################
 cat > "${BASE_DIR}/caddy/Caddyfile" <<EOF
 {
@@ -132,7 +150,7 @@ ${DOMAIN} {
 EOF
 
 ############################################
-# docker-compose.yaml
+# docker-compose.yaml (mount host ffmpeg)
 ############################################
 cat > "${BASE_DIR}/docker-compose.yaml" <<'YAML'
 services:
@@ -152,7 +170,7 @@ services:
       retries: 10
 
   n8n:
-    build: .
+    image: n8nio/n8n:latest
     restart: unless-stopped
     depends_on:
       postgres:
@@ -162,7 +180,8 @@ services:
       GENERIC_TIMEZONE: ${GENERIC_TIMEZONE}
     volumes:
       - ./data:/home/node/.n8n
-    # За портом следит Caddy (443)
+      - /usr/local/bin/ffmpeg:/usr/local/bin/ffmpeg:ro
+      - /usr/local/bin/ffprobe:/usr/local/bin/ffprobe:ro
 
   caddy:
     image: caddy:latest
@@ -183,25 +202,34 @@ volumes:
 YAML
 
 ############################################
-# START
+# START STACK (with permission fallback)
 ############################################
-echo "[*] Starting stack..."
+echo "[*] Starting Docker stack..."
 cd "$BASE_DIR"
-docker compose pull
-docker compose build
-docker compose up -d
+if docker info >/dev/null 2>&1; then
+  docker compose version
+  docker compose pull
+  docker compose up -d
+else
+  echo "[*] Using sudo for docker (permissions fix)..."
+  sudo docker compose version
+  sudo docker compose pull
+  sudo docker compose up -d
+fi
 
 ############################################
 # INFO
 ############################################
 echo
 echo "========================================="
-echo " n8n развернут с PostgreSQL и SSL (Caddy)"
-echo " Домен:        https://${DOMAIN}"
-echo " Данные:       ${BASE_DIR}"
-echo " Postgres user: ${POSTGRES_USER}"
-echo " Postgres pass: ${POSTGRES_PASSWORD}"
-echo " N8N ENC KEY:   ${N8N_ENCRYPTION_KEY}"
+echo " ✅ n8n развернут с PostgreSQL и SSL (Caddy)"
+echo " 🌐 Домен:        https://${DOMAIN}"
+echo " 🕒 Таймзона:     ${TZ}"
+echo " 📁 Директория:   ${BASE_DIR}"
+echo " 🧰 Postgres user: ${POSTGRES_USER}"
+echo " 🔑 Postgres pass: ${POSTGRES_PASSWORD}"
+echo " 🔐 N8N ENC KEY:   ${N8N_ENCRYPTION_KEY}"
 echo "========================================="
-echo "Проверь в Lightsail: открыт ли фаерволл на 80/443."
-echo "Docker и контейнеры настроены на автозапуск (restart: unless-stopped)."
+echo "Проверь порты 80/443 в Lightsail firewall."
+echo "FFmpeg смонтирован в контейнер n8n: /usr/local/bin/ffmpeg, /usr/local/bin/ffprobe"
+echo "Контейнеры: restart: unless-stopped"
