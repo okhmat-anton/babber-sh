@@ -45,7 +45,6 @@ echo "[8/10] Installing make..."
 sudo yum install -y make
 
 echo "[9/10] Building and starting Docker services..."
-sudo make build
 sudo make start
 
 echo "[10/10] Waiting for Nginx container to be ready..."
