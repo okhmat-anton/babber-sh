@@ -45,7 +45,7 @@ echo "[7/9] Use nginx NO-SSL config"
 cp nginx/nginx.nossl.conf nginx/default.conf
 
 echo "[8/9] Start containers (HTTP)"
-sudo docker-compose --compatibility up --build -d
+sudo make install
 
 if [ -n "$DOMAIN" ]; then
   echo "[9/9] Issue SSL certificate for $DOMAIN"
