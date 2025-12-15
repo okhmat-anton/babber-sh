@@ -67,3 +67,8 @@ else
 fi
 
 echo "✅ Setup complete"
+
+
+echo "🌐 Server public IP address:"
+echo "https://$(curl -s https://checkip.amazonaws.com)/backend"
+echo "tracker_admin admin - please change it after first login"
